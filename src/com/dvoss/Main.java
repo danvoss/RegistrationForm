@@ -1,6 +1,9 @@
 package com.dvoss;
 
+import jodd.json.JsonParser;
+import jodd.json.JsonSerializer;
 import org.h2.tools.Server;
+import spark.Spark;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -54,5 +57,46 @@ public class Main {
         Server.createWebServer().start();
         Connection conn = DriverManager.getConnection("jdbc:h2:./main");
         createTable(conn);
+
+        Spark.externalStaticFileLocation("public");
+        Spark.init();
+
+        Spark.get(
+                "/user",
+                (request, response) -> {
+                    ArrayList<User> users = selectUsers(conn);
+                    JsonSerializer serializer = new JsonSerializer();
+                    return serializer.serialize(users);
+                }
+        );
+        Spark.post(
+                "/user",
+                (request, response) -> {
+                    String body = request.body();
+                    JsonParser parser = new JsonParser();
+                    User user = parser.parse(body, User.class);
+                    insertUser(conn, user);
+                    return "";
+                }
+        );
+        Spark.put(
+                "/user",
+                (request, response) -> {
+                    String body = request.body();
+                    JsonParser parser = new JsonParser();
+                    User user = parser.parse(body, User.class);
+                    updateUser(conn, user);
+                    return "";
+                }
+        );
+        Spark.delete(
+                "/user/:id",
+                (request, response) -> {
+                    Integer id = Integer.valueOf(request.params(":id"));
+                    deleteUser(conn, id);
+                    return "";
+                }
+        );
+
     }
 }
